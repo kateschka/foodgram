@@ -7,13 +7,6 @@ class User(AbstractUser):
     last_name = models.CharField(max_length=255, verbose_name='Фамилия')
     avatar = models.ImageField(
         upload_to='avatars/', null=True, blank=True, verbose_name='Аватар')
-    subscriptions = models.ManyToManyField(
-        'self',
-        related_name='subscribers',
-        verbose_name='Подписки',
-        through='Subscription',
-        blank=True
-    )
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['first_name', 'last_name', 'email']
@@ -27,16 +20,16 @@ class User(AbstractUser):
         return f'{self.first_name} {self.last_name}'
 
 
-class Subscription(models.Model):
-    user = models.ForeignKey(
+class Follow(models.Model):
+    follower = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='subscriptions'
+        related_name='Подписчик'
     )
-    subscribed_to = models.ForeignKey(
+    followee = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='subscribed_to'
+        related_name='На кого подписан'
     )
     created_at = models.DateTimeField(
         auto_now_add=True,
@@ -49,5 +42,5 @@ class Subscription(models.Model):
         ordering = ['id']
         constraints = [
             models.UniqueConstraint(
-                fields=['user', 'subscribed_to'], name='unique_subscription')
+                fields=['follower', 'followee'], name='unique_follow')
         ]
