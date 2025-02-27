@@ -7,9 +7,10 @@ class User(AbstractUser):
     last_name = models.CharField(max_length=255, verbose_name='Фамилия')
     avatar = models.ImageField(
         upload_to='avatars/', null=True, blank=True, verbose_name='Аватар')
+    email = models.EmailField(unique=True, verbose_name='Email')
 
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['first_name', 'last_name', 'email']
+    REQUIRED_FIELDS = ['first_name', 'last_name']
 
     class Meta:
         verbose_name = 'Пользователь'
@@ -24,12 +25,12 @@ class Follow(models.Model):
     follower = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='Подписчик'
+        related_name='following'
     )
     followee = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='На кого подписан'
+        related_name='followers'
     )
     created_at = models.DateTimeField(
         auto_now_add=True,
