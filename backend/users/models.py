@@ -1,16 +1,45 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.contrib.auth.validators import UnicodeUsernameValidator
+
+from backend.constants import (
+    MAX_USER_FIRST_NAME_LENGTH, MAX_USER_LAST_NAME_LENGTH,
+    MAX_USER_EMAIL_LENGTH, MAX_USER_USERNAME_LENGTH)
 
 
 class User(AbstractUser):
-    first_name = models.CharField(max_length=255, verbose_name='Имя')
-    last_name = models.CharField(max_length=255, verbose_name='Фамилия')
+    first_name = models.CharField(
+        max_length=MAX_USER_FIRST_NAME_LENGTH,
+        verbose_name='Имя',
+        help_text='Имя пользователя'
+    )
+    last_name = models.CharField(
+        max_length=MAX_USER_LAST_NAME_LENGTH,
+        verbose_name='Фамилия',
+        help_text='Фамилия пользователя'
+    )
     avatar = models.ImageField(
-        upload_to='avatars/', null=True, blank=True, verbose_name='Аватар')
-    email = models.EmailField(unique=True, verbose_name='Email')
+        upload_to='avatars/',
+        null=True,
+        blank=True,
+        verbose_name='Аватар',
+        help_text='Аватар пользователя'
+    )
+    email = models.EmailField(
+        unique=True,
+        max_length=MAX_USER_EMAIL_LENGTH,
+        verbose_name='Email',
+        help_text='Email пользователя'
+    )
+    username = models.CharField(
+        unique=True,
+        max_length=MAX_USER_USERNAME_LENGTH,
+        verbose_name='Имя пользователя',
+        validators=[UnicodeUsernameValidator()]
+    )
 
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['first_name', 'last_name']
+    REQUIRED_FIELDS = ['first_name', 'last_name', 'username', 'password']
 
     class Meta:
         verbose_name = 'Пользователь'
@@ -43,5 +72,12 @@ class Follow(models.Model):
         ordering = ['id']
         constraints = [
             models.UniqueConstraint(
-                fields=['follower', 'followee'], name='unique_follow')
+                fields=['follower', 'followee'], name='unique_follow'),
+            models.CheckConstraint(
+                check=~models.Q(follower=models.F('followee')),
+                name='prevent_self_follow'
+            )
         ]
+
+    def __str__(self):
+        return f'{self.follower} подписан на {self.followee}'
