@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
 from rest_framework import serializers
 
-from recipes.models import Tag
+from recipes.models import Tag, Ingredient, Recipe
 
 
 class Base64ImageField(serializers.ImageField):
@@ -29,7 +29,8 @@ class UserSerializer(DjoserUserSerializer):
     def get_is_subscribed(self, obj):
         return (
             self.context['request'].user.is_authenticated
-            and self.context['request'].user.following.filter(followee=obj).exists()
+            and self.context['request'].user.following.filter(
+                followee=obj).exists()
         )
 
     def to_representation(self, instance):
@@ -42,3 +43,16 @@ class TagSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tag
         fields = ('id', 'name', 'slug')
+
+
+class IngredientSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Ingredient
+        fields = ('id', 'name', 'measurement_unit')
+
+
+class RecipeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Recipe
+        fields = ('id', 'name', 'text', 'ingredients', 'tags', 'cooking_time',
+                  'author', 'image', 'is_favorited', 'is_in_shopping_cart')
