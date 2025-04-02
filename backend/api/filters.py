@@ -8,6 +8,8 @@ class IngredientSearchFilter(filters.SearchFilter):
 
         if not search_term:
             return queryset
+        else:
+            search_term = search_term.lower()
 
         starts_with = Q(name__istartswith=search_term)
         contains = Q(name__icontains=search_term)

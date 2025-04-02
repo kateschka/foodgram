@@ -12,11 +12,14 @@ class Command(BaseCommand):
             f'{settings.BASE_DIR}/data/ingredients.csv',
             encoding='utf-8'
         ) as file:
-            reader = csv.reader(file)
-            for row in reader:
-                name, measurement_unit = row
-                Ingredient.objects.get_or_create(
-                    name=name, measurement_unit=measurement_unit)
+            reader = csv.DictReader(file)
+            Ingredient.objects.bulk_create(
+                Ingredient(
+                    name=row['name'],
+                    measurement_unit=row['measurement_unit']
+                )
+                for row in reader
+            )
 
         self.stdout.write(self.style.SUCCESS(
             'Ingredients loaded successfully'))

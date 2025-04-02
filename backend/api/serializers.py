@@ -8,12 +8,12 @@ from recipes.models import Tag, Ingredient, Recipe
 
 
 class Base64ImageField(serializers.ImageField):
+
     def to_internal_value(self, data):
         if isinstance(data, str) and data.startswith('data:image'):
-            format, imgstr = data.split(';base64,')
-            ext = format.split('/')[-1]
-            data = ContentFile(base64.b64decode(imgstr), name='temp.' + ext)
-
+            img_format, img_str = data.split(';base64,')
+            ext = img_format.split('/')[-1]
+            data = ContentFile(base64.b64decode(img_str), name='image.' + ext)
         return super().to_internal_value(data)
 
 
@@ -52,7 +52,28 @@ class IngredientSerializer(serializers.ModelSerializer):
 
 
 class RecipeSerializer(serializers.ModelSerializer):
+    ingredients = IngredientSerializer(many=True)
+    tags = TagSerializer(many=True)
+    image = Base64ImageField(required=False)
+    is_favorited = serializers.SerializerMethodField()
+    is_in_shopping_cart = serializers.SerializerMethodField()
+
     class Meta:
         model = Recipe
         fields = ('id', 'name', 'text', 'ingredients', 'tags', 'cooking_time',
                   'author', 'image', 'is_favorited', 'is_in_shopping_cart')
+        read_only_fields = ('author',)
+
+    def get_is_favorited(self, obj):
+        return (
+            self.context['request'].user.is_authenticated
+            and self.context['request'].user.favorites.filter(
+                recipe=obj).exists()
+        )
+
+    def get_is_in_shopping_cart(self, obj):
+        return (
+            self.context['request'].user.is_authenticated
+            and self.context['request'].user.shopping_cart.filter(
+                recipe=obj).exists()
+        )
