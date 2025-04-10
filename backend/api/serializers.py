@@ -247,64 +247,6 @@ class RecipeCreateUpdateSerializer(serializers.ModelSerializer):
         return data
 
 
-class ShoppingCartSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ShoppingCart
-        fields = ('id', 'recipe', 'user')
-
-    def validate(self, value):
-        if not Recipe.objects.filter(id=value.id).exists():
-            raise serializers.ValidationError(
-                'Рецепт не найден'
-            )
-        if ShoppingCart.objects.filter(user=self.context['request'].user,
-                                       recipe=value.id).exists():
-            raise serializers.ValidationError(
-                'Рецепт уже добавлен в корзину'
-            )
-        return value
-
-    def create(self, validated_data):
-        return ShoppingCart.objects.create(**validated_data)
-
-    def to_representation(self, instance):
-        return {
-            'id': instance.recipe.id,
-            'name': instance.recipe.name,
-            'image': instance.recipe.image.url,
-            'cooking_time': instance.recipe.cooking_time,
-        }
-
-
-class FavoriteSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Favorite
-        fields = ('id', 'recipe', 'user')
-
-    def validate(self, value):
-        if not Recipe.objects.filter(id=value.id).exists():
-            raise serializers.ValidationError(
-                'Рецепт не найден'
-            )
-        if Favorite.objects.filter(user=self.context['request'].user,
-                                   recipe=value.id).exists():
-            raise serializers.ValidationError(
-                'Рецепт уже добавлен в избранное'
-            )
-        return value
-
-    def create(self, validated_data):
-        return Favorite.objects.create(**validated_data)
-
-    def to_representation(self, instance):
-        return {
-            'id': instance.recipe.id,
-            'name': instance.recipe.name,
-            'image': instance.recipe.image.url,
-            'cooking_time': instance.recipe.cooking_time,
-        }
-
-
 class FollowSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(source='followee.id')
     email = serializers.EmailField(source='followee.email')
