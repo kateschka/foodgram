@@ -54,11 +54,11 @@ class Recipe(models.Model):
         User,
         on_delete=models.CASCADE,
         related_name='recipes',
-        verbose_name='Автор рецепта'
+        verbose_name='Автор'
     )
     name = models.CharField(
-        'Название рецепта',
-        max_length=MAX_RECIPE_NAME_LENGTH
+        max_length=200,
+        verbose_name='Название'
     )
     text = models.TextField(verbose_name='Описание рецепта')
     ingredients = models.ManyToManyField(
@@ -111,9 +111,20 @@ class Recipe(models.Model):
 
 
 class RecipeIngredient(models.Model):
-    recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE)
-    ingredient = models.ForeignKey(Ingredient, on_delete=models.CASCADE)
-    amount = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    recipe = models.ForeignKey(
+        Recipe,
+        on_delete=models.CASCADE,
+        verbose_name='Рецепт'
+    )
+    ingredient = models.ForeignKey(
+        Ingredient,
+        on_delete=models.CASCADE,
+        verbose_name='Ингредиент'
+    )
+    amount = models.PositiveIntegerField(
+        verbose_name='Количество',
+        validators=[MinValueValidator(1)]
+    )
 
     def __str__(self):
         return f'{self.recipe.name} - {self.ingredient.name}'

@@ -1,6 +1,6 @@
 """Views для API."""
 from django.contrib.auth import get_user_model
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, HttpResponse
 from django.shortcuts import get_object_or_404
 from rest_framework import filters
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
@@ -11,17 +11,20 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 
+from .pagination import PaginatorWithLimit
 from recipes.models import Favorite, ShoppingCart, Tag, Ingredient, Recipe
 from users.models import Follow
 from .serializers import (
     RecipeCreateUpdateSerializer, TagSerializer,
     IngredientSerializer, RecipeSerializer,
     UserSerializer, UserAvatarSerializer,
-    FavoriteSerializer, ShoppingCartSerializer,
-    FollowSerializer, FollowCreateSerializer
+    FollowSerializer, FollowCreateSerializer,
+    RecipeShortSerializer
 )
 from .permissions import IsOwnerOrReadOnly
-from .filters import IngredientSearchFilter
+from .filters import IngredientSearchFilter, RecipeFilter
+from django_filters.rest_framework import DjangoFilterBackend
+from django.db.models import Sum
 
 User = get_user_model()
 
@@ -94,11 +97,46 @@ class UserViewSet(DjoserUserViewSet):
 
     @subscribe.mapping.delete
     def unsubscribe(self, request, *args, **kwargs):
+        """Метод для удаления подписки."""
         followee = get_object_or_404(User, id=kwargs['id'])
-        follow = get_object_or_404(Follow, follower=request.user,
-                                   followee=followee)
+
+        follow = Follow.objects.filter(
+            follower=request.user,
+            followee=followee
+        ).first()
+
+        if not follow:
+            return Response(
+                {'errors': 'Вы не подписаны на этого пользователя'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         follow.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(
+        detail=False,
+        methods=['get'],
+        url_path='subscriptions',
+    )
+    def subscriptions(self, request):
+        """Метод для получения списка подписок пользователя."""
+        subscriptions = Follow.objects.filter(follower=request.user)
+        page = self.paginate_queryset(subscriptions)
+        if page is not None:
+            serializer = FollowSerializer(
+                page,
+                many=True,
+                context={'request': request}
+            )
+            return self.get_paginated_response(serializer.data)
+
+        serializer = FollowSerializer(
+            subscriptions,
+            many=True,
+            context={'request': request}
+        )
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class TagViewSet(viewsets.ReadOnlyModelViewSet):
@@ -118,13 +156,16 @@ class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
 class RecipeViewSet(viewsets.ModelViewSet):
     queryset = Recipe.objects.all()
     serializer_class = RecipeSerializer
-    filter_backends = (filters.SearchFilter,)
+    pagination_class = PaginatorWithLimit
+    filter_backends = (DjangoFilterBackend, filters.SearchFilter)
+    filterset_class = RecipeFilter
     search_fields = ('name', 'author__username', 'tags__name')
     permission_classes = (IsOwnerOrReadOnly,)
 
     @action(
         detail=True,
         methods=['post', 'delete'],
+        permission_classes=(IsAuthenticated,)
     )
     def favorite(self, request, *args, **kwargs):
         """Метод для добавления и удаления рецепта из списка избранного"""
@@ -137,6 +178,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
     @action(
         detail=True,
         methods=['post', 'delete'],
+        permission_classes=(IsAuthenticated,)
     )
     def shopping_cart(self, request, *args, **kwargs):
         """Метод для добавления и удаления рецепта из списка покупок"""
@@ -154,20 +196,50 @@ class RecipeViewSet(viewsets.ModelViewSet):
     def get_link(self, request, *args, **kwargs):
         """Метод для получения короткой ссылки на рецепт."""
         recipe = get_object_or_404(Recipe, id=self.kwargs['pk'])
-        short_link = recipe.short_link
-        return Response({'short_link': short_link}, status=status.HTTP_200_OK)
+        short_link = f'{request.get_host()}/{recipe.short_link}/'
+        return Response({'short-link': short_link}, status=status.HTTP_200_OK)
 
     @action(
         detail=False,
         methods=['get'],
+        url_path='short-link-redirect',
+    )
+    def short_link_redirect(self, request, short_link=None):
+        """Перенаправление по короткой ссылке на рецепт."""
+        recipe = get_object_or_404(Recipe, short_link=short_link)
+        return HttpResponseRedirect(f'/api/recipes/{recipe.pk}/')
+
+    @action(
+        detail=False,
+        methods=['get'],
+        permission_classes=[IsAuthenticated]
     )
     def download_shopping_cart(self, request):
         """Метод для скачивания списка покупок."""
-        shopping_cart = ShoppingCart.objects.filter(user=request.user)
-        shopping_cart_items = []
-        for item in shopping_cart:
-            shopping_cart_items.append(item.recipe.ingredients.all())
-        return Response(shopping_cart_items, status=status.HTTP_200_OK)
+        ingredients = (
+            Recipe.objects.filter(in_shopping_cart__user=request.user)
+            .values(
+                'ingredients__name',
+                'ingredients__measurement_unit'
+            )
+            .annotate(total_amount=Sum('recipeingredient__amount'))
+            .order_by('ingredients__name')
+        )
+
+        shopping_list = ['Список покупок:\n\n']
+        for ingredient in ingredients:
+            shopping_list.append(
+                f"- {ingredient['ingredients__name']} "
+                f"({ingredient['ingredients__measurement_unit']}) — "
+                f"{ingredient['total_amount']}\n"
+            )
+
+        response = HttpResponse(
+            ''.join(shopping_list),
+            content_type='text/plain; charset=utf-8'
+        )
+        response['Content-Disposition'] = 'attachment; filename="shopping_list.txt"'
+        return response
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
@@ -175,6 +247,8 @@ class RecipeViewSet(viewsets.ModelViewSet):
         return super().get_permissions()
 
     def perform_create(self, serializer):
+        """Метод для сохранения рецепта"""
+
         serializer.save(author=self.request.user)
 
     def get_serializer_class(self):
@@ -185,20 +259,20 @@ class RecipeViewSet(viewsets.ModelViewSet):
     def add_to(self, model, user, pk):
         """Метод для проверки существования объекта и создания нового"""
         if model.objects.filter(user=user, recipe__id=pk).exists():
-            return Response({'errors': 'Рецепт уже добавлен!'},
+            return Response({'detail': 'Рецепт уже добавлен!'},
                             status=status.HTTP_400_BAD_REQUEST)
         recipe = get_object_or_404(Recipe, id=pk)
         model.objects.create(user=user, recipe=recipe)
-        serializer = RecipeSerializer(recipe)
+        serializer = RecipeShortSerializer(
+            recipe, context={'request': self.request})
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def remove_from(self, model, user, pk):
         """Метод для удаления объекта"""
-        obj = get_object_or_404(model, user=user, recipe__id=pk)
-        obj.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-    def short_link_redirect(self, request, short_link=None):
-        """Перенаправление по короткой ссылке на рецепт."""
-        recipe = get_object_or_404(Recipe, short_link=short_link)
-        return HttpResponseRedirect(f'/recipes/{recipe.pk}/')
+        try:
+            obj = get_object_or_404(model, user=user, recipe__id=pk)
+            obj.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Exception as e:
+            return Response({'detail': str(e)},
+                            status=status.HTTP_400_BAD_REQUEST)
