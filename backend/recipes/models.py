@@ -1,3 +1,5 @@
+import random
+import string
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator
@@ -7,7 +9,8 @@ from backend.constants import (
     MAX_TAG_SLUG_LENGTH,
     MAX_INGREDIENT_NAME_LENGTH,
     MAX_INGREDIENT_MEASUREMENT_UNIT_LENGTH,
-    MAX_RECIPE_NAME_LENGTH
+    MAX_RECIPE_NAME_LENGTH,
+    MAX_SHORT_LINK_LENGTH
 )
 
 User = get_user_model()
@@ -38,7 +41,7 @@ class Ingredient(models.Model):
         max_length=MAX_INGREDIENT_MEASUREMENT_UNIT_LENGTH)
 
     class Meta:
-        ordering = ('name')
+        ordering = ('name',)
         verbose_name = 'Ингредиент'
         verbose_name_plural = 'Ингредиенты'
 
@@ -69,6 +72,13 @@ class Recipe(models.Model):
     image = models.ImageField(
         verbose_name='Изображение',
         upload_to='recipes/', blank=True, null=True)
+    short_link = models.CharField(
+        'Короткая ссылка',
+        max_length=MAX_SHORT_LINK_LENGTH,
+        unique=True,
+        blank=True,
+        null=True
+    )
 
     class Meta:
         ordering = ('-id',)
@@ -81,6 +91,21 @@ class Recipe(models.Model):
             )
         ]
 
+    def create_short_link(self):
+        """Метод для создания короткой ссылки"""
+        while not self.short_link:
+            short_link = ''.join(random.choices(
+                string.ascii_letters + string.digits, k=6))
+            if not Recipe.objects.filter(short_link=short_link).exists():
+                self.short_link = short_link
+                break
+        return short_link
+
+    def save(self, *args, **kwargs):
+        if not self.short_link:
+            self.create_short_link()
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return self.name
 
@@ -89,6 +114,9 @@ class RecipeIngredient(models.Model):
     recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE)
     ingredient = models.ForeignKey(Ingredient, on_delete=models.CASCADE)
     amount = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+
+    def __str__(self):
+        return f'{self.recipe.name} - {self.ingredient.name}'
 
     class Meta:
         constraints = [
@@ -101,9 +129,20 @@ class RecipeIngredient(models.Model):
 
 class Favorite(models.Model):
     user = models.ForeignKey(
-        User, on_delete=models.CASCADE, verbose_name='Пользователь')
+        User,
+        on_delete=models.CASCADE,
+        related_name='favorites',
+        verbose_name='Пользователь'
+    )
     recipe = models.ForeignKey(
-        Recipe, on_delete=models.CASCADE, verbose_name='Избранный рецепт')
+        Recipe,
+        on_delete=models.CASCADE,
+        related_name='favorited_by',
+        verbose_name='Избранный рецепт'
+    )
+
+    def __str__(self):
+        return f'{self.user.username} добавил "{self.recipe.name}" в избранное'
 
     class Meta:
         ordering = ('-id',)
@@ -116,15 +155,23 @@ class Favorite(models.Model):
             )
         ]
 
-    def __str__(self):
-        return f'{self.user.username} добавил "{self.recipe.name}" в избранное'
-
 
 class ShoppingCart(models.Model):
     user = models.ForeignKey(
-        User, on_delete=models.CASCADE, verbose_name='Пользователь')
+        User,
+        on_delete=models.CASCADE,
+        related_name='shopping_cart',
+        verbose_name='Пользователь'
+    )
     recipe = models.ForeignKey(
-        Recipe, on_delete=models.CASCADE, verbose_name='Рецепт в корзине')
+        Recipe,
+        on_delete=models.CASCADE,
+        related_name='in_shopping_cart',
+        verbose_name='Рецепт в корзине'
+    )
+
+    def __str__(self):
+        return f'{self.user.username} добавил "{self.recipe.name}" в корзину'
 
     class Meta:
         ordering = ('-id',)
