@@ -118,8 +118,6 @@ jobs:
             sudo docker compose -f docker-compose.production.yml up -d
             sudo docker compose -f docker-compose.production.yml exec backend python manage.py migrate
             sudo docker compose -f docker-compose.production.yml exec backend python manage.py collectstatic --no-input
-            sudo docker compose -f docker-compose.production.yml exec backend python manage.py createsuperuser --noinput --username $ADMIN_USERNAME --email $ADMIN_EMAIL --password $ADMIN_PASSWORD --first_name $ADMIN_FIRST_NAME --last_name $ADMIN_LAST_NAME
-            sudo docker compose -f docker-compose.production.yml exec backend python manage.py load-ingredients-from-csv
 
   send_message:
     runs-on: ubuntu-latest
