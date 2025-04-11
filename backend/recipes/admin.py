@@ -38,13 +38,13 @@ class RecipeAdmin(admin.ModelAdmin):
 
     def get_favorite_count(self, obj):
         """Метод для получения количества добавлений в избранное."""
-        return obj.favorites.count()
+        return obj.favorited_by.count()
 
     get_favorite_count.short_description = "В избранном"
 
     def get_shopping_cart_count(self, obj):
         """Метод для получения количества добавлений в список покупок."""
-        return obj.shopping_cart.count()
+        return obj.in_shopping_cart.count()
 
     get_shopping_cart_count.short_description = "В списке покупок"
 
