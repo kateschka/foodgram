@@ -31,7 +31,8 @@ class IngredientAdmin(admin.ModelAdmin):
 class RecipeAdmin(admin.ModelAdmin):
     """Админ-панель для рецептов."""
 
-    list_display = ("name", "author")
+    list_display = ("name", "author",
+                    "get_favorite_count", "get_shopping_cart_count")
     search_fields = ("name", "author__username")
     list_filter = ("tags",)
 
