@@ -16,10 +16,17 @@ from users.models import Follow
 from .filters import IngredientSearchFilter, RecipeFilter
 from .pagination import PaginatorWithLimit
 from .permissions import IsOwnerOrReadOnly
-from .serializers import (FollowCreateSerializer, FollowSerializer,
-                          IngredientSerializer, RecipeCreateUpdateSerializer,
-                          RecipeSerializer, RecipeShortSerializer,
-                          TagSerializer, UserAvatarSerializer, UserSerializer)
+from .serializers import (
+    FollowCreateSerializer,
+    FollowSerializer,
+    IngredientSerializer,
+    RecipeCreateUpdateSerializer,
+    RecipeSerializer,
+    RecipeShortSerializer,
+    TagSerializer,
+    UserAvatarSerializer,
+    UserSerializer,
+)
 
 User = get_user_model()
 

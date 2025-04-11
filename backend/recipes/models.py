@@ -6,10 +6,14 @@ from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator
 from django.db import models
 
-from backend.constants import (MAX_INGREDIENT_MEASUREMENT_UNIT_LENGTH,
-                               MAX_INGREDIENT_NAME_LENGTH,
-                               MAX_RECIPE_NAME_LENGTH, MAX_SHORT_LINK_LENGTH,
-                               MAX_TAG_NAME_LENGTH, MAX_TAG_SLUG_LENGTH)
+from backend.constants import (
+    MAX_INGREDIENT_MEASUREMENT_UNIT_LENGTH,
+    MAX_INGREDIENT_NAME_LENGTH,
+    MAX_RECIPE_NAME_LENGTH,
+    MAX_SHORT_LINK_LENGTH,
+    MAX_TAG_NAME_LENGTH,
+    MAX_TAG_SLUG_LENGTH,
+)
 
 User = get_user_model()
 
