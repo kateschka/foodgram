@@ -1,10 +1,7 @@
 name: test workflow
 
-on:
-  push:
-    branches:
-      - [*]
-      
+on: push
+
 jobs:
   test:
     runs-on: ubuntu-latest
