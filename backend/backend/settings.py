@@ -11,9 +11,11 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 import os
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 from .constants import DEFAULT_PAGE_SIZE
+
 load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.

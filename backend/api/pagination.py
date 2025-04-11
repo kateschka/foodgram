@@ -1,6 +1,7 @@
 """Настройки пагинации для API."""
 
 from rest_framework.pagination import PageNumberPagination
+
 from backend.constants import DEFAULT_PAGE_SIZE
 
 

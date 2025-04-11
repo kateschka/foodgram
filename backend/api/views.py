@@ -1,29 +1,25 @@
 """Views для API."""
 from django.contrib.auth import get_user_model
-from django.http import HttpResponseRedirect, HttpResponse
+from django.db.models import Sum
+from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
-from django.db.models import Sum
 from djoser.views import UserViewSet as DjoserUserViewSet
-from rest_framework import filters
-from rest_framework import status, viewsets
+from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
-from .pagination import PaginatorWithLimit
-from recipes.models import Favorite, ShoppingCart, Tag, Ingredient, Recipe
+from recipes.models import Favorite, Ingredient, Recipe, ShoppingCart, Tag
 from users.models import Follow
-from .serializers import (
-    RecipeCreateUpdateSerializer, TagSerializer,
-    IngredientSerializer, RecipeSerializer,
-    UserSerializer, UserAvatarSerializer,
-    FollowSerializer, FollowCreateSerializer,
-    RecipeShortSerializer
-)
-from .permissions import IsOwnerOrReadOnly
-from .filters import IngredientSearchFilter, RecipeFilter
 
+from .filters import IngredientSearchFilter, RecipeFilter
+from .pagination import PaginatorWithLimit
+from .permissions import IsOwnerOrReadOnly
+from .serializers import (FollowCreateSerializer, FollowSerializer,
+                          IngredientSerializer, RecipeCreateUpdateSerializer,
+                          RecipeSerializer, RecipeShortSerializer,
+                          TagSerializer, UserAvatarSerializer, UserSerializer)
 
 User = get_user_model()
 

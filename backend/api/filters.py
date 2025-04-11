@@ -1,8 +1,8 @@
 """Фильтры для API."""
 import django_filters
-from rest_framework import filters
 from django.contrib.auth import get_user_model
-from django.db.models import Case, When, Value, IntegerField, Q
+from django.db.models import Case, IntegerField, Q, Value, When
+from rest_framework import filters
 
 from recipes.models import Recipe
 

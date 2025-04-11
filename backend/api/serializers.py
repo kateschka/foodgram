@@ -3,16 +3,13 @@ import base64
 
 from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
-from django.shortcuts import get_object_or_404
 from django.db import transaction
+from django.shortcuts import get_object_or_404
 from djoser.serializers import UserSerializer as DjoserUserSerializer
+from rest_framework import serializers, status
 from rest_framework.response import Response
-from rest_framework import status
-from rest_framework import serializers
 
-
-from recipes.models import (Tag, Ingredient, Recipe,
-                            RecipeIngredient)
+from recipes.models import Ingredient, Recipe, RecipeIngredient, Tag
 from users.models import Follow
 
 User = get_user_model()
