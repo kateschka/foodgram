@@ -18,7 +18,7 @@ services:
 
   backend:
     container_name: foodgram-back
-    build: ../backend
+    image: kateschka/foodgram_backend:latest
     env_file:
       - ../backend/.env
     depends_on:
@@ -31,7 +31,7 @@ services:
 
   frontend:
     container_name: foodgram-front
-    build: ../frontend
+    image: kateschka/foodgram_frontend:latest
     command: cp -r /app/build/. /frontend_static/
     volumes:
       - static:/frontend_static
