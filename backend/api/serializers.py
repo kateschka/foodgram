@@ -287,42 +287,30 @@ class RecipeCreateUpdateSerializer(serializers.ModelSerializer):
         return data
 
 
-class FollowSerializer(serializers.ModelSerializer):
+class FollowSerializer(UserSerializer):
     """Сериализатор для подписок."""
 
-    id = serializers.IntegerField(source='followee.id')
-    email = serializers.EmailField(source='followee.email')
-    username = serializers.CharField(source='followee.username')
-    first_name = serializers.CharField(source='followee.first_name')
-    last_name = serializers.CharField(source='followee.last_name')
-    avatar = serializers.ImageField(source='followee.avatar')
-    is_subscribed = serializers.SerializerMethodField()
     recipes = serializers.SerializerMethodField()
     recipes_count = serializers.SerializerMethodField()
 
-    class Meta:
+    class Meta(UserSerializer.Meta):
         """Мета класс для сериализатора."""
 
-        model = User
-        fields = ('id', 'username', 'email', 'first_name', 'last_name',
-                  'avatar', 'recipes', 'recipes_count', 'is_subscribed')
+        fields = UserSerializer.Meta.fields + ('recipes', 'recipes_count')
+        read_only_fields = fields
 
-    def get_is_subscribed(self, obj):
-        """Метод для проверки подписки на пользователя."""
-        return Follow.objects.filter(
-            follower=self.context['request'].user,
-            followee=obj.followee
-        ).exists()
+    def to_representation(self, instance):
+        """Метод для представления подписки."""
+        if isinstance(instance, Follow):
+            instance = instance.followee
+        return super().to_representation(instance)
 
     def get_recipes(self, obj):
-        """
-        Метод для получения рецептов подписчика.
-
-        Учитывается ограничение на количество.
-        """
+        """Метод для получения рецептов пользователя с учетом лимита."""
+        user = obj.followee if isinstance(obj, Follow) else obj
         request = self.context.get('request')
         limit = request.query_params.get('recipes_limit') if request else None
-        recipes = obj.followee.recipes.all()
+        recipes = user.recipes.all()
         if limit:
             recipes = recipes[:int(limit)]
         return [
@@ -336,8 +324,9 @@ class FollowSerializer(serializers.ModelSerializer):
         ]
 
     def get_recipes_count(self, obj):
-        """Метод для получения количества рецептов подписчика."""
-        return obj.followee.recipes.count()
+        """Метод для получения количества рецептов пользователя."""
+        user = obj.followee if isinstance(obj, Follow) else obj
+        return user.recipes.count()
 
 
 class FollowCreateSerializer(serializers.ModelSerializer):
@@ -373,14 +362,13 @@ class FollowCreateSerializer(serializers.ModelSerializer):
         """Метод для представления подписки."""
         return FollowSerializer(instance, context=self.context).data
 
-
-def add_to(self, model, user, pk):
-    """Метод для проверки существования объекта и создания нового."""
-    if model.objects.filter(user=user, recipe__id=pk).exists():
-        return Response({'errors': 'Рецепт уже добавлен!'},
-                        status=status.HTTP_400_BAD_REQUEST)
-    recipe = get_object_or_404(Recipe, id=pk)
-    model.objects.create(user=user, recipe=recipe)
-    serializer = RecipeShortSerializer(
-        recipe, context={'request': self.request})
-    return Response(serializer.data, status=status.HTTP_201_CREATED)
+    def add_to(self, model, user, pk):
+        """Метод для проверки существования объекта и создания нового."""
+        if model.objects.filter(user=user, recipe__id=pk).exists():
+            return Response({'errors': 'Рецепт уже добавлен!'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        recipe = get_object_or_404(Recipe, id=pk)
+        model.objects.create(user=user, recipe=recipe)
+        serializer = RecipeShortSerializer(
+            recipe, context={'request': self.request})
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
