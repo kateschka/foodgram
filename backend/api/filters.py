@@ -1,17 +1,17 @@
+"""Фильтры для API."""
 import django_filters
 from rest_framework import filters
-from django.contrib.auth import get_user_model
-from django_filters.rest_framework import FilterSet
 from django.db.models import Case, When, Value, IntegerField, Q
 from django.contrib.auth.models import User
 
-from recipes.models import Tag, Recipe
-
-User = get_user_model()
+from recipes.models import Recipe
 
 
 class IngredientSearchFilter(filters.SearchFilter):
+    """Фильтр для поиска ингредиентов."""
+
     def filter_queryset(self, request, queryset, view):
+        """Метод для фильтрации ингредиентов."""
         search_term = request.query_params.get('name')
 
         if not search_term:
@@ -33,6 +33,8 @@ class IngredientSearchFilter(filters.SearchFilter):
 
 
 class RecipeFilter(django_filters.FilterSet):
+    """Фильтр для рецептов."""
+
     author = django_filters.ModelChoiceFilter(
         queryset=User.objects.all(),
         field_name='author'
@@ -48,15 +50,19 @@ class RecipeFilter(django_filters.FilterSet):
     )
 
     class Meta:
+        """Мета класс для фильтра."""
+
         model = Recipe
         fields = ('author', 'tags', 'is_favorited', 'is_in_shopping_cart')
 
     def filter_is_favorited(self, queryset, name, value):
+        """Метод для фильтрации рецептов по избранному."""
         if value == '1' and self.request.user.is_authenticated:
             return queryset.filter(favorited_by__user=self.request.user)
         return queryset
 
     def filter_is_in_shopping_cart(self, queryset, name, value):
+        """Метод для фильтрации рецептов по списку покупок."""
         if value and self.request.user.is_authenticated:
             return queryset.filter(in_shopping_cart__user=self.request.user)
         return queryset

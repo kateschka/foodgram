@@ -1,3 +1,4 @@
+"""Модели для приложения recipes."""
 import random
 import string
 from django.db import models
@@ -17,21 +18,28 @@ User = get_user_model()
 
 
 class Tag(models.Model):
+    """Модель тега."""
+
     name = models.CharField('Имя тега', unique=True,
                             max_length=MAX_TAG_NAME_LENGTH)
     slug = models.SlugField('Ссылка на тег', unique=True,
                             max_length=MAX_TAG_SLUG_LENGTH)
 
     class Meta:
+        """Мета класс для тега."""
+
         ordering = ('name',)
         verbose_name = 'Тег'
         verbose_name_plural = 'Теги'
 
     def __str__(self):
+        """Строковое представление тега."""
         return self.name
 
 
 class Ingredient(models.Model):
+    """Модель ингредиента."""
+
     name = models.CharField(
         'Название ингредиента',
         unique=True,
@@ -41,15 +49,20 @@ class Ingredient(models.Model):
         max_length=MAX_INGREDIENT_MEASUREMENT_UNIT_LENGTH)
 
     class Meta:
+        """Мета класс для ингредиента."""
+
         ordering = ('name',)
         verbose_name = 'Ингредиент'
         verbose_name_plural = 'Ингредиенты'
 
     def __str__(self):
+        """Строковое представление ингредиента."""
         return f'{self.name}, {self.measurement_unit}.'
 
 
 class Recipe(models.Model):
+    """Модель рецепта."""
+
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -57,8 +70,8 @@ class Recipe(models.Model):
         verbose_name='Автор'
     )
     name = models.CharField(
-        max_length=200,
-        verbose_name='Название'
+        max_length=MAX_RECIPE_NAME_LENGTH,
+        verbose_name='Название',
     )
     text = models.TextField(verbose_name='Описание рецепта')
     ingredients = models.ManyToManyField(
@@ -81,6 +94,8 @@ class Recipe(models.Model):
     )
 
     class Meta:
+        """Мета класс для рецепта."""
+
         ordering = ('-id',)
         verbose_name = 'Рецепт'
         verbose_name_plural = 'Рецепты'
@@ -92,7 +107,7 @@ class Recipe(models.Model):
         ]
 
     def create_short_link(self):
-        """Метод для создания короткой ссылки"""
+        """Метод для создания короткой ссылки."""
         while not self.short_link:
             short_link = ''.join(random.choices(
                 string.ascii_letters + string.digits, k=6))
@@ -102,15 +117,19 @@ class Recipe(models.Model):
         return short_link
 
     def save(self, *args, **kwargs):
+        """Метод для сохранения рецепта."""
         if not self.short_link:
             self.create_short_link()
         super().save(*args, **kwargs)
 
     def __str__(self):
+        """Строковое представление рецепта."""
         return self.name
 
 
 class RecipeIngredient(models.Model):
+    """Модель ингредиента в рецепте."""
+
     recipe = models.ForeignKey(
         Recipe,
         on_delete=models.CASCADE,
@@ -126,19 +145,25 @@ class RecipeIngredient(models.Model):
         validators=[MinValueValidator(1)]
     )
 
-    def __str__(self):
-        return f'{self.recipe.name} - {self.ingredient.name}'
-
     class Meta:
+        """Мета класс для ингредиента в рецепте."""
+
         constraints = [
             models.UniqueConstraint(
                 fields=['recipe', 'ingredient'],
                 name='unique_recipe_ingredient'
             )
         ]
+        ordering = ('recipe', 'ingredient')
+
+    def __str__(self):
+        """Строковое представление ингредиента в рецепте."""
+        return f'{self.recipe.name} - {self.ingredient.name}'
 
 
 class Favorite(models.Model):
+    """Модель избранного."""
+
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -152,10 +177,9 @@ class Favorite(models.Model):
         verbose_name='Избранный рецепт'
     )
 
-    def __str__(self):
-        return f'{self.user.username} добавил "{self.recipe.name}" в избранное'
-
     class Meta:
+        """Мета класс для избранного."""
+
         ordering = ('-id',)
         verbose_name = 'Избранное'
         verbose_name_plural = 'Избранные'
@@ -166,8 +190,14 @@ class Favorite(models.Model):
             )
         ]
 
+    def __str__(self):
+        """Строковое представление избранного."""
+        return f'{self.user.username} добавил "{self.recipe.name}" в избранное'
+
 
 class ShoppingCart(models.Model):
+    """Модель корзины."""
+
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -181,10 +211,9 @@ class ShoppingCart(models.Model):
         verbose_name='Рецепт в корзине'
     )
 
-    def __str__(self):
-        return f'{self.user.username} добавил "{self.recipe.name}" в корзину'
-
     class Meta:
+        """Мета класс для корзины."""
+
         ordering = ('-id',)
         constraints = [
             models.UniqueConstraint(
@@ -194,3 +223,7 @@ class ShoppingCart(models.Model):
         ]
         verbose_name = 'Корзина'
         verbose_name_plural = 'Корзины'
+
+    def __str__(self):
+        """Строковое представление корзины."""
+        return f'{self.user.username} добавил "{self.recipe.name}" в корзину'

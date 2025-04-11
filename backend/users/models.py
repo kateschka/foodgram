@@ -1,3 +1,4 @@
+"""Модели для приложения users."""
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.contrib.auth.validators import UnicodeUsernameValidator
@@ -8,6 +9,8 @@ from backend.constants import (
 
 
 class User(AbstractUser):
+    """Модель пользователя."""
+
     first_name = models.CharField(
         max_length=MAX_USER_FIRST_NAME_LENGTH,
         verbose_name='Имя',
@@ -42,15 +45,20 @@ class User(AbstractUser):
     REQUIRED_FIELDS = ['first_name', 'last_name', 'username', 'password']
 
     class Meta:
+        """Мета класс для пользователя."""
+
         verbose_name = 'Пользователь'
         verbose_name_plural = 'Пользователи'
         ordering = ['id']
 
     def __str__(self):
+        """Строковое представление пользователя."""
         return f'{self.first_name} {self.last_name}'
 
 
 class Follow(models.Model):
+    """Модель подписки."""
+
     follower = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -69,6 +77,8 @@ class Follow(models.Model):
     )
 
     class Meta:
+        """Мета класс для подписки."""
+
         verbose_name = 'Подписка'
         verbose_name_plural = 'Подписки'
         ordering = ('id',)
@@ -82,4 +92,5 @@ class Follow(models.Model):
         ]
 
     def __str__(self):
+        """Строковое представление подписки."""
         return f'{self.follower} подписан на {self.followee}'

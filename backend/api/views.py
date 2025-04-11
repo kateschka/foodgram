@@ -2,10 +2,10 @@
 from django.contrib.auth import get_user_model
 from django.http import HttpResponseRedirect, HttpResponse
 from django.shortcuts import get_object_or_404
-from rest_framework import filters
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from django_filters.rest_framework import DjangoFilterBackend
+from django.db.models import Sum
 from djoser.views import UserViewSet as DjoserUserViewSet
-
+from rest_framework import filters
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -23,13 +23,14 @@ from .serializers import (
 )
 from .permissions import IsOwnerOrReadOnly
 from .filters import IngredientSearchFilter, RecipeFilter
-from django_filters.rest_framework import DjangoFilterBackend
-from django.db.models import Sum
+
 
 User = get_user_model()
 
 
 class UserViewSet(DjoserUserViewSet):
+    """Класс для работы с пользователями."""
+
     serializer_class = UserSerializer
 
     @action(
@@ -85,6 +86,7 @@ class UserViewSet(DjoserUserViewSet):
         permission_classes=[IsAuthenticated]
     )
     def subscribe(self, request, *args, **kwargs):
+        """Метод для создания подписки."""
         followee = get_object_or_404(User, id=kwargs['id'])
         follower = get_object_or_404(User, id=request.user.id)
         serializer = FollowCreateSerializer(
@@ -140,12 +142,16 @@ class UserViewSet(DjoserUserViewSet):
 
 
 class TagViewSet(viewsets.ReadOnlyModelViewSet):
+    """Класс для работы с тегами."""
+
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
     pagination_class = None
 
 
 class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
+    """Класс для работы с ингредиентами."""
+
     queryset = Ingredient.objects.all()
     serializer_class = IngredientSerializer
     filter_backends = (IngredientSearchFilter,)
@@ -154,6 +160,8 @@ class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class RecipeViewSet(viewsets.ModelViewSet):
+    """Класс для работы с рецептами."""
+
     queryset = Recipe.objects.all()
     serializer_class = RecipeSerializer
     pagination_class = PaginatorWithLimit
@@ -168,7 +176,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
         permission_classes=(IsAuthenticated,)
     )
     def favorite(self, request, *args, **kwargs):
-        """Метод для добавления и удаления рецепта из списка избранного"""
+        """Метод для добавления и удаления рецепта из списка избранного."""
         recipe = self.get_object()
         if request.method == 'POST':
             return self.add_to(Favorite, request.user, recipe.id)
@@ -181,7 +189,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
         permission_classes=(IsAuthenticated,)
     )
     def shopping_cart(self, request, *args, **kwargs):
-        """Метод для добавления и удаления рецепта из списка покупок"""
+        """Метод для добавления и удаления рецепта из списка покупок."""
         recipe = self.get_object()
         if request.method == 'POST':
             return self.add_to(ShoppingCart, request.user, recipe.id)
@@ -238,26 +246,29 @@ class RecipeViewSet(viewsets.ModelViewSet):
             ''.join(shopping_list),
             content_type='text/plain; charset=utf-8'
         )
-        response['Content-Disposition'] = 'attachment; filename="shopping_list.txt"'
+        response['Content-Disposition'] = (
+            'attachment; filename="shopping_list.txt"'
+        )
         return response
 
     def get_permissions(self):
+        """Метод для проверки прав доступа."""
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [IsAuthenticated(), IsOwnerOrReadOnly()]
         return super().get_permissions()
 
     def perform_create(self, serializer):
-        """Метод для сохранения рецепта"""
-
+        """Метод для сохранения рецепта."""
         serializer.save(author=self.request.user)
 
     def get_serializer_class(self):
+        """Метод для получения сериализатора."""
         if self.action in ['create', 'update', 'partial_update']:
             return RecipeCreateUpdateSerializer
         return super().get_serializer_class()
 
     def add_to(self, model, user, pk):
-        """Метод для проверки существования объекта и создания нового"""
+        """Метод для проверки существования объекта и создания нового."""
         if model.objects.filter(user=user, recipe__id=pk).exists():
             return Response({'detail': 'Рецепт уже добавлен!'},
                             status=status.HTTP_400_BAD_REQUEST)
@@ -268,7 +279,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def remove_from(self, model, user, pk):
-        """Метод для удаления объекта"""
+        """Метод для удаления объекта."""
         try:
             obj = get_object_or_404(model, user=user, recipe__id=pk)
             obj.delete()
