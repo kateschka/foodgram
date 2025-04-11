@@ -39,11 +39,8 @@ services:
   nginx:
     container_name: foodgram-proxy
     image: nginx:1.25.4-alpine
-    depends_on:
-      - backend
-      - frontend
     ports:
-      - "80:80"
+      - "9000:80"
     volumes:
       - ../docs/:/usr/share/nginx/html/api/docs/
       - media:/media
