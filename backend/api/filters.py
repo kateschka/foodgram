@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.db.models import Case, IntegerField, Q, Value, When
 from rest_framework import filters
 
-from recipes.models import Recipe
+from recipes.models import Recipe, Tag
 
 User = get_user_model()
 
@@ -41,8 +41,10 @@ class RecipeFilter(django_filters.FilterSet):
         queryset=User.objects.all(),
         field_name='author'
     )
-    tags = django_filters.AllValuesMultipleFilter(
+    tags = django_filters.ModelMultipleChoiceFilter(
+        queryset=Tag.objects.all(),
         field_name='tags__slug',
+        to_field_name='slug'
     )
     is_favorited = django_filters.CharFilter(
         method='filter_is_favorited'
