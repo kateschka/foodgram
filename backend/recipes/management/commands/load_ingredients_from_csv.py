@@ -13,19 +13,16 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         """Метод для загрузки ингредиентов из CSV файла."""
-        # Make sure your CSV file path is correct
         csv_file = 'data/ingredients.csv'
 
         try:
             with open(csv_file, encoding='utf-8') as file:
                 reader = csv.reader(file)
-                # Skip header row if it exists
-                # next(reader)  # Uncomment if your CSV has headers
 
                 ingredients_to_create = [
                     Ingredient(
-                        name=row[0],  # First column
-                        measurement_unit=row[1]  # Second column
+                        name=row[0],
+                        measurement_unit=row[1]
                     )
                     for row in reader
                 ]

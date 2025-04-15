@@ -3,7 +3,7 @@ import random
 import string
 
 from django.contrib.auth import get_user_model
-from django.core.validators import MinValueValidator
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 from backend.constants import (
@@ -19,7 +19,12 @@ User = get_user_model()
 
 
 class Tag(models.Model):
-    """Модель тега."""
+    """Модель тега для категоризации рецептов.
+
+    Теги позволяют группировать рецепты по различным признакам (например,
+    завтрак, обед, ужин, вегетарианское, быстрое приготовление и т.д.).
+    Каждый тег имеет уникальное имя и slug для URL.
+    """
 
     name = models.CharField('Имя тега', unique=True,
                             max_length=MAX_TAG_NAME_LENGTH)
@@ -27,7 +32,11 @@ class Tag(models.Model):
                             max_length=MAX_TAG_SLUG_LENGTH)
 
     class Meta:
-        """Мета класс для тега."""
+        """Мета класс для тега.
+
+        Определяет порядок сортировки по имени, а также русскоязычные названия
+        для единственного и множественного числа.
+        """
 
         ordering = ('name',)
         verbose_name = 'Тег'
@@ -39,7 +48,12 @@ class Tag(models.Model):
 
 
 class Ingredient(models.Model):
-    """Модель ингредиента."""
+    """Модель ингредиента для рецептов.
+
+    Хранит информацию о продуктах, используемых в рецептах, включая их название
+    и единицу измерения. Каждый ингредиент имеет уникальное название для
+    предотвращения дублирования в базе данных.
+    """
 
     name = models.CharField(
         'Название ингредиента',
@@ -50,19 +64,32 @@ class Ingredient(models.Model):
         max_length=MAX_INGREDIENT_MEASUREMENT_UNIT_LENGTH)
 
     class Meta:
-        """Мета класс для ингредиента."""
+        """Мета класс для ингредиента.
+
+        Определяет порядок сортировки по имени, а также русскоязычные названия
+        для единственного и множественного числа.
+        """
 
         ordering = ('name',)
         verbose_name = 'Ингредиент'
         verbose_name_plural = 'Ингредиенты'
 
     def __str__(self):
-        """Строковое представление ингредиента."""
+        """
+        Строковое представление ингредиента в формате
+        'Название, единица измерения'.
+        """
         return f'{self.name}, {self.measurement_unit}.'
 
 
 class Recipe(models.Model):
-    """Модель рецепта."""
+    """Модель рецепта - основная сущность приложения.
+
+    Содержит полную информацию о рецепте: название, описание, время
+    приготовления, изображение, автора, список ингредиентов с их
+    количеством и теги. Поддерживает короткие ссылки для быстрого
+    доступа к рецепту.
+    """
 
     author = models.ForeignKey(
         User,
@@ -76,13 +103,19 @@ class Recipe(models.Model):
     )
     text = models.TextField(verbose_name='Описание рецепта')
     ingredients = models.ManyToManyField(
-        Ingredient, through='RecipeIngredient')
+        Ingredient,
+        through='RecipeIngredient',
+        related_name='recipes_with_ingredient'
+    )
     tags = models.ManyToManyField(
         Tag, verbose_name='Теги', related_name='recipes')
-    cooking_time = models.PositiveIntegerField(
+    cooking_time = models.PositiveSmallIntegerField(
         verbose_name='Время приготовления',
-        validators=[MinValueValidator(
-            1, 'Минимальное время приготовления - 1 минута')])
+        validators=[
+            MinValueValidator(1, 'Минимальное время приготовления - 1 минута'),
+            MaxValueValidator(
+                300, 'Максимальное время приготовления - 300 минут')
+        ])
     image = models.ImageField(
         verbose_name='Изображение',
         upload_to='recipes/', blank=True, null=True)
@@ -95,7 +128,13 @@ class Recipe(models.Model):
     )
 
     class Meta:
-        """Мета класс для рецепта."""
+        """Мета класс для рецепта.
+
+        Определяет порядок сортировки по id в обратном порядке, а также
+        русскоязычные названия для единственного и множественного числа.
+        Устанавливает ограничение на уникальность комбинации автора и
+        названия рецепта.
+        """
 
         ordering = ('-id',)
         verbose_name = 'Рецепт'
@@ -108,7 +147,12 @@ class Recipe(models.Model):
         ]
 
     def create_short_link(self):
-        """Метод для создания короткой ссылки."""
+        """Создает уникальную короткую ссылку для рецепта.
+
+        Генерирует случайную строку длиной 6 символов, состоящую из
+        букв и цифр. Проверяет уникальность сгенерированной ссылки в
+        базе данных.
+        """
         while not self.short_link:
             short_link = ''.join(random.choices(
                 string.ascii_letters + string.digits, k=6))
@@ -118,7 +162,11 @@ class Recipe(models.Model):
         return short_link
 
     def save(self, *args, **kwargs):
-        """Метод для сохранения рецепта."""
+        """Сохраняет рецепт в базе данных.
+
+        Автоматически генерирует короткую ссылку, если она не была
+        создана ранее.
+        """
         if not self.short_link:
             self.create_short_link()
         super().save(*args, **kwargs)
@@ -129,17 +177,24 @@ class Recipe(models.Model):
 
 
 class RecipeIngredient(models.Model):
-    """Модель ингредиента в рецепте."""
+    """Промежуточная модель для связи рецептов и ингредиентов.
+
+    Хранит информацию о количестве каждого ингредиента в конкретном
+    рецепте. Обеспечивает уникальность комбинации рецепта и
+    ингредиента.
+    """
 
     recipe = models.ForeignKey(
         Recipe,
         on_delete=models.CASCADE,
-        verbose_name='Рецепт'
+        verbose_name='Рецепт',
+        related_name='recipe_ingredients'
     )
     ingredient = models.ForeignKey(
         Ingredient,
         on_delete=models.CASCADE,
-        verbose_name='Ингредиент'
+        verbose_name='Ингредиент',
+        related_name='ingredient_recipes'
     )
     amount = models.PositiveIntegerField(
         verbose_name='Количество',
@@ -147,7 +202,12 @@ class RecipeIngredient(models.Model):
     )
 
     class Meta:
-        """Мета класс для ингредиента в рецепте."""
+        """Мета класс для ингредиента в рецепте.
+
+        Определяет порядок сортировки по рецепту и ингредиенту, а также
+        устанавливает ограничение на уникальность комбинации рецепта и
+        ингредиента.
+        """
 
         constraints = [
             models.UniqueConstraint(
@@ -163,7 +223,12 @@ class RecipeIngredient(models.Model):
 
 
 class Favorite(models.Model):
-    """Модель избранного."""
+    """Модель для хранения избранных рецептов пользователей.
+
+    Позволяет пользователям сохранять понравившиеся рецепты для
+    быстрого доступа. Каждый пользователь может добавить рецепт в
+    избранное только один раз.
+    """
 
     user = models.ForeignKey(
         User,
@@ -179,7 +244,13 @@ class Favorite(models.Model):
     )
 
     class Meta:
-        """Мета класс для избранного."""
+        """Мета класс для избранного.
+
+        Определяет порядок сортировки по id в обратном порядке, а также
+        русскоязычные названия для единственного и множественного числа.
+        Устанавливает ограничение на уникальность комбинации пользователя
+        и рецепта.
+        """
 
         ordering = ('-id',)
         verbose_name = 'Избранное'
@@ -197,7 +268,12 @@ class Favorite(models.Model):
 
 
 class ShoppingCart(models.Model):
-    """Модель корзины."""
+    """Модель для хранения рецептов в списке покупок пользователей.
+
+    Позволяет пользователям добавлять рецепты в список покупок для
+    удобного формирования списка необходимых ингредиентов. Каждый
+    пользователь может добавить рецепт в список покупок только один раз.
+    """
 
     user = models.ForeignKey(
         User,
@@ -213,17 +289,23 @@ class ShoppingCart(models.Model):
     )
 
     class Meta:
-        """Мета класс для корзины."""
+        """Мета класс для корзины.
+
+        Определяет порядок сортировки по id в обратном порядке, а также
+        русскоязычные названия для единственного и множественного числа.
+        Устанавливает ограничение на уникальность комбинации пользователя
+        и рецепта.
+        """
 
         ordering = ('-id',)
+        verbose_name = 'Корзина'
+        verbose_name_plural = 'Корзины'
         constraints = [
             models.UniqueConstraint(
                 fields=['user', 'recipe'],
                 name='unique_shopping_cart'
             )
         ]
-        verbose_name = 'Корзина'
-        verbose_name_plural = 'Корзины'
 
     def __str__(self):
         """Строковое представление корзины."""
