@@ -28,14 +28,6 @@ class Base64ImageField(serializers.ImageField):
     """
 
     def to_internal_value(self, data):
-        """Преобразует base64 строку в файл изображения.
-
-        Args:
-            data (str): Строка с изображением в формате base64.
-
-        Returns:
-            ContentFile: Файл изображения.
-        """
         if isinstance(data, str) and data.startswith('data:image'):
             img_format, img_str = data.split(';base64,')
             ext = img_format.split('/')[-1]
@@ -43,14 +35,6 @@ class Base64ImageField(serializers.ImageField):
         return super().to_internal_value(data)
 
     def to_representation(self, instance):
-        """Преобразует файл изображения в URL.
-
-        Args:
-            instance (ImageField): Поле с изображением.
-
-        Returns:
-            str: URL изображения или None, если изображение отсутствует.
-        """
         if instance:
             return instance.url
         return None
@@ -249,14 +233,6 @@ class RecipeCreateUpdateSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def create(self, validated_data):
-        """Создает новый рецепт с учетом связанных объектов.
-
-        Args:
-            validated_data (dict): Валидированные данные для создания рецепта.
-
-        Returns:
-            Recipe: Созданный рецепт.
-        """
         tags = validated_data.pop('tags')
         ingredients = validated_data.pop('ingredients')
 
@@ -268,42 +244,14 @@ class RecipeCreateUpdateSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def update(self, instance, validated_data):
-        """Обновляет существующий рецепт с учетом связанных объектов.
-
-        Args:
-            instance (Recipe): Рецепт для обновления.
-            validated_data (dict): Валидированные данные для обновления.
-
-        Returns:
-            Recipe: Обновленный рецепт.
-        """
         self._handle_related_objects(instance, validated_data)
         instance.save()
         return instance
 
     def to_representation(self, instance):
-        """Преобразует рецепт в формат для отображения.
-
-        Args:
-            instance (Recipe): Рецепт для преобразования.
-
-        Returns:
-            dict: Данные рецепта в формате для отображения.
-        """
         return RecipeSerializer(instance, context=self.context).data
 
     def validate(self, data):
-        """Проверяет валидность данных рецепта.
-
-        Args:
-            data (dict): Данные для валидации.
-
-        Returns:
-            dict: Валидированные данные.
-
-        Raises:
-            ValidationError: Если данные не соответствуют требованиям.
-        """
         tags = data.get('tags')
         if not tags:
             raise serializers.ValidationError({
@@ -376,14 +324,6 @@ class FollowSerializer(UserSerializer):
         read_only_fields = fields
 
     def to_representation(self, instance):
-        """Преобразует подписку в формат для отображения.
-
-        Args:
-            instance (Follow): Подписка для преобразования.
-
-        Returns:
-            dict: Данные подписки в формате для отображения.
-        """
         if isinstance(instance, Follow):
             instance = instance.followee
         return super().to_representation(instance)
@@ -429,17 +369,6 @@ class FollowCreateSerializer(serializers.ModelSerializer):
         fields = ('followee', 'follower')
 
     def validate(self, value):
-        """Проверяет валидность данных подписки.
-
-        Args:
-            value (dict): Данные для валидации.
-
-        Returns:
-            dict: Валидированные данные.
-
-        Raises:
-            ValidationError: Если данные не соответствуют требованиям.
-        """
         follower = value.get('follower')
         followee = value.get('followee')
 
@@ -459,14 +388,6 @@ class FollowCreateSerializer(serializers.ModelSerializer):
         return value
 
     def to_representation(self, instance):
-        """Преобразует подписку в формат для отображения.
-
-        Args:
-            instance (Follow): Подписка для преобразования.
-
-        Returns:
-            dict: Данные подписки в формате для отображения.
-        """
         return FollowSerializer(instance, context=self.context).data
 
 
@@ -491,17 +412,6 @@ class BaseUserRecipeSerializer(serializers.ModelSerializer):
         read_only_fields = ('user',)
 
     def validate(self, data):
-        """Проверяет валидность данных для создания связи.
-
-        Args:
-            data (dict): Данные для валидации.
-
-        Returns:
-            dict: Валидированные данные.
-
-        Raises:
-            ValidationError: Если связь уже существует.
-        """
         if self.Meta.model.objects.filter(
             user=data['user'],
             recipe=data['recipe']
@@ -512,14 +422,6 @@ class BaseUserRecipeSerializer(serializers.ModelSerializer):
         return data
 
     def to_representation(self, instance):
-        """Преобразует объект в формат для отображения.
-
-        Args:
-            instance: Объект для преобразования.
-
-        Returns:
-            dict: Данные рецепта в формате для отображения.
-        """
         return RecipeShortSerializer(
             instance.recipe, context=self.context
         ).data

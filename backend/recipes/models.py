@@ -105,7 +105,7 @@ class Recipe(models.Model):
     ingredients = models.ManyToManyField(
         Ingredient,
         through='RecipeIngredient',
-        related_name='recipes_with_ingredient'
+        related_name='recipes'
     )
     tags = models.ManyToManyField(
         Tag, verbose_name='Теги', related_name='recipes')
@@ -118,7 +118,7 @@ class Recipe(models.Model):
         ])
     image = models.ImageField(
         verbose_name='Изображение',
-        upload_to='recipes/', blank=True, null=True)
+        upload_to='recipes/', blank=True)
     short_link = models.CharField(
         'Короткая ссылка',
         max_length=MAX_SHORT_LINK_LENGTH,
@@ -146,6 +146,20 @@ class Recipe(models.Model):
             )
         ]
 
+    def __str__(self):
+        """Строковое представление рецепта."""
+        return self.name
+
+    def save(self, *args, **kwargs):
+        """Сохраняет рецепт в базе данных.
+
+        Автоматически генерирует короткую ссылку, если она не была
+        создана ранее.
+        """
+        if not self.short_link:
+            self.create_short_link()
+        super().save(*args, **kwargs)
+
     def create_short_link(self):
         """Создает уникальную короткую ссылку для рецепта.
 
@@ -160,20 +174,6 @@ class Recipe(models.Model):
                 self.short_link = short_link
                 break
         return short_link
-
-    def save(self, *args, **kwargs):
-        """Сохраняет рецепт в базе данных.
-
-        Автоматически генерирует короткую ссылку, если она не была
-        создана ранее.
-        """
-        if not self.short_link:
-            self.create_short_link()
-        super().save(*args, **kwargs)
-
-    def __str__(self):
-        """Строковое представление рецепта."""
-        return self.name
 
 
 class RecipeIngredient(models.Model):
@@ -196,9 +196,9 @@ class RecipeIngredient(models.Model):
         verbose_name='Ингредиент',
         related_name='ingredient_recipes'
     )
-    amount = models.PositiveIntegerField(
+    amount = models.PositiveSmallIntegerField(
         verbose_name='Количество',
-        validators=[MinValueValidator(1)]
+        validators=[MinValueValidator(1), MaxValueValidator(1440)]
     )
 
     class Meta:

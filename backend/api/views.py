@@ -141,15 +141,13 @@ class UserViewSet(DjoserUserViewSet):
             Response: Пустой ответ при успешном удалении или
             сообщение об ошибке.
         """
-        followee = get_object_or_404(User, id=kwargs['id'])
-
-        deleted_count = Follow.objects.filter(
+        deleted_count, _ = Follow.objects.filter(
             follower=request.user,
-            followee_id=followee
-        ).delete()[0]
+            followee_id=kwargs['id']
+        ).delete()
         if not deleted_count:
             return Response(
-                {'detail': 'Подписка не найдена!'},
+                {'detail': 'Ошибка при удалении подписки'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -232,9 +230,6 @@ class RecipeViewSet(viewsets.ModelViewSet):
     - Скачивание списка покупок
     """
 
-    queryset = Recipe.objects.select_related('author').prefetch_related(
-        'tags', 'ingredients'
-    ).all()
     serializer_class = RecipeSerializer
     pagination_class = PaginatorWithLimit
     filter_backends = (DjangoFilterBackend, filters.SearchFilter)
@@ -252,7 +247,9 @@ class RecipeViewSet(viewsets.ModelViewSet):
         Returns:
             QuerySet: Оптимизированный queryset с аннотациями.
         """
-        queryset = super().get_queryset()
+        queryset = Recipe.objects.select_related('author').prefetch_related(
+            'tags', 'ingredients'
+        ).all()
         if self.request.user.is_authenticated:
             queryset = queryset.annotate(
                 is_favorited=Exists(
@@ -469,13 +466,12 @@ class RecipeViewSet(viewsets.ModelViewSet):
             Response: Пустой ответ при успешном удалении или
             сообщение об ошибке.
         """
-        recipe = get_object_or_404(Recipe, id=pk)
-        deleted_count = model.objects.filter(
-            user=user, recipe=recipe
-        ).delete()[0]
+        deleted_count, _ = model.objects.filter(
+            user=user, recipe__id=pk
+        ).delete()
         if not deleted_count:
             return Response(
-                {'detail': 'Рецепт не найден в списке!'},
+                {'detail': 'Ошибка при удалении рецепта'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         return Response(status=status.HTTP_204_NO_CONTENT)
