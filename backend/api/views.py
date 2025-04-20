@@ -249,7 +249,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
         """
         queryset = Recipe.objects.select_related('author').prefetch_related(
             'tags', 'ingredients'
-        ).all()
+        )
         if self.request.user.is_authenticated:
             queryset = queryset.annotate(
                 is_favorited=Exists(
