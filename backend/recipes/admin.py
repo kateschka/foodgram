@@ -1,6 +1,6 @@
 """Админ-панель для приложения recipes."""
-from django.contrib import admin
 from admin_auto_filters.filters import AutocompleteFilter
+from django.contrib import admin
 
 from .models import (
     Favorite,
