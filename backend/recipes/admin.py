@@ -1,5 +1,6 @@
 """Админ-панель для приложения recipes."""
 from django.contrib import admin
+from admin_auto_filters.filters import AutocompleteFilter
 
 from .models import (
     Favorite,
@@ -9,6 +10,16 @@ from .models import (
     ShoppingCart,
     Tag,
 )
+
+
+class TagFilter(AutocompleteFilter):
+    title = 'Тег'
+    field_name = 'tags'
+
+
+class AuthorFilter(AutocompleteFilter):
+    title = 'Автор'
+    field_name = 'author'
 
 
 @admin.register(Tag)
@@ -33,8 +44,16 @@ class RecipeAdmin(admin.ModelAdmin):
 
     list_display = ("name", "author",
                     "get_favorite_count", "get_shopping_cart_count")
-    search_fields = ("name", "author__username")
-    list_filter = ("tags",)
+    list_filter = (TagFilter, AuthorFilter)
+
+    def get_queryset(self, request):
+        """Метод для получения queryset с аннотациями."""
+        return (
+            super()
+            .get_queryset(request)
+            .select_related('author')
+            .prefetch_related('tags', 'ingredients')
+        )
 
     def get_favorite_count(self, obj):
         """Метод для получения количества добавлений в избранное."""
@@ -54,7 +73,14 @@ class RecipeIngredientAdmin(admin.ModelAdmin):
     """Админ-панель для ингредиентов в рецептах."""
 
     list_display = ("recipe", "ingredient", "amount")
-    search_fields = ("recipe__name", "ingredient__name")
+    list_filter = ("recipe__author__username", "ingredient__name")
+
+    def get_queryset(self, request):
+        return (
+            super()
+            .get_queryset(request)
+            .select_related('recipe', 'ingredient')
+        )
 
 
 @admin.register(Favorite)
@@ -64,6 +90,13 @@ class FavoriteAdmin(admin.ModelAdmin):
     list_display = ("user", "recipe")
     search_fields = ("user__username", "recipe__name")
 
+    def get_queryset(self, request):
+        return (
+            super()
+            .get_queryset(request)
+            .select_related('user', 'recipe')
+        )
+
 
 @admin.register(ShoppingCart)
 class ShoppingCartAdmin(admin.ModelAdmin):
@@ -71,3 +104,10 @@ class ShoppingCartAdmin(admin.ModelAdmin):
 
     list_display = ("user", "recipe")
     search_fields = ("user__username", "recipe__name")
+
+    def get_queryset(self, request):
+        return (
+            super()
+            .get_queryset(request)
+            .select_related('user', 'recipe')
+        )
